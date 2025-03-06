@@ -1,1 +1,5 @@
 *.env
+__pycache__/*
+shit.py
+user_data.db
+app1.py

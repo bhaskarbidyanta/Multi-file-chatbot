@@ -21,7 +21,7 @@ if not google_api_key:
 MODEL_NAME = "gemini-1.5-pro"
 EMBEDDING_MODEL = "models/embedding-001"
 
-st.title("📄 PDF Chatbot")
+st.title("📄 Multi-PDF Chatbot")
 
 # Fetch PDFs from MongoDB
 pdfs = list(pdfs_collection.find({}, {"_id": 1, "filename": 1, "content": 1}))
@@ -31,23 +31,30 @@ if not pdfs:
     st.stop()
 
 pdf_list = {str(doc["_id"]): doc.get("filename", "Unnamed PDF") for doc in pdfs}
-selected_pdf_id = st.selectbox("📂 Choose a PDF", list(pdf_list.keys()), format_func=lambda x: pdf_list[x])
+selected_pdf_ids = st.multiselect("📂 Choose PDFs", list(pdf_list.keys()), format_func=lambda x: pdf_list[x])
 
-if st.button("📥 Load PDF"):
-    pdf_data = next((doc for doc in pdfs if str(doc["_id"]) == selected_pdf_id), None)
-
-    if not pdf_data or "content" not in pdf_data or not pdf_data["content"].strip():
-        st.error("❌ Error: PDF content is empty or missing.")
+if st.button("📥 Load PDFs"):
+    selected_pdfs = [doc for doc in pdfs if str(doc["_id"]) in selected_pdf_ids]
+    
+    if not selected_pdfs:
+        st.error("❌ No valid PDFs selected.")
         st.stop()
-
-    # Split text into chunks for retrieval
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
-    docs = text_splitter.split_text(pdf_data["content"])
-
+    
+    all_texts = []
+    for pdf in selected_pdfs:
+        if "content" in pdf and pdf["content"].strip():
+            text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+            chunks = text_splitter.split_text(pdf["content"])
+            all_texts.extend(chunks)
+    
+    if not all_texts:
+        st.error("❌ Error: Selected PDFs have empty or missing content.")
+        st.stop()
+    
     # Store text chunks in FAISS
     embeddings = GoogleGenerativeAIEmbeddings(model=EMBEDDING_MODEL, google_api_key=google_api_key)
-    vectorstore = FAISS.from_texts(docs, embeddings)
-
+    vectorstore = FAISS.from_texts(all_texts, embeddings)
+    
     # Setup conversational retrieval chain
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
     qa_chain = ConversationalRetrievalChain.from_llm(
@@ -55,9 +62,9 @@ if st.button("📥 Load PDF"):
         retriever=vectorstore.as_retriever(),
         memory=memory
     )
-
-    st.success("✅ PDF loaded! You can now ask questions.")
-
+    
+    st.success("✅ PDFs loaded! You can now ask questions.")
+    
     # Initialize session state
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
@@ -65,12 +72,12 @@ if st.button("📥 Load PDF"):
 
 # Chatbot interface
 if "qa_chain" in st.session_state:
-    user_input = st.text_input("💬 Ask a question about the PDF:")
-
+    user_input = st.text_input("💬 Ask a question about the PDFs:")
+    
     if user_input:
         response = st.session_state.qa_chain.run(user_input)
         st.session_state.chat_history.append((user_input, response))
-
+    
     # Display chat history
     for question, answer in st.session_state.chat_history:
         st.write(f"**You:** {question}")
