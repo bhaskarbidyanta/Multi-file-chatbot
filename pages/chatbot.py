@@ -1,5 +1,6 @@
 import os
 import streamlit as st
+import speech_recognition as sr
 from pymongo import MongoClient
 from db import pdfs_collection
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -21,7 +22,7 @@ if not google_api_key:
 MODEL_NAME = "gemini-1.5-pro"
 EMBEDDING_MODEL = "models/embedding-001"
 
-st.title("📄 Multi-PDF Chatbot")
+st.title("📄 Multi-PDF Chatbot with Voice Commands")
 
 # Fetch PDFs from MongoDB
 pdfs = list(pdfs_collection.find({}, {"_id": 1, "filename": 1, "content": 1}))
@@ -69,10 +70,33 @@ if st.button("📥 Load PDFs"):
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
     st.session_state.qa_chain = qa_chain  # Store chain in session
+#Voice recognition function
+def get_voice_command():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        st.info("🎤 Speak now...")
+        try:
+            audio = recognizer.listen(source,timeout=5)
+            command = recognizer.recognize_google(audio)
+            return command
+        except sr.UnknownValueError:
+            st.warning("Could not understand the voice input.")
+        except sr.RequestError:
+            st.warning("Speech recognition service is unavailable.")
 
 # Chatbot interface
 if "qa_chain" in st.session_state:
-    user_input = st.text_input("💬 Ask a question about the PDFs:")
+    col1,col2 = st.columns([3,1])
+
+    with col1:
+        user_input = st.text_input("💬 Ask a question about the PDFs:")
+
+    with col2:
+        if st.button("🎤 Use Voice (Press Spacebar)"):
+            voice_query = get_voice_command()
+            if voice_query:
+                user_input = voice_query
+                st.text(f"You said: {voice_query}")
     
     if user_input:
         response = st.session_state.qa_chain.run(user_input)
