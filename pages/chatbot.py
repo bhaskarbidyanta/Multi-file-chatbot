@@ -17,10 +17,25 @@ google_api_key = os.getenv("GEMINI_API_KEY")
 if not google_api_key:
     st.error("❌ Error: Google API Key is missing. Set 'GEMINI_API_KEY' in your .env file.")
     st.stop()
+# Model Configuration UI
+st.sidebar.header("🛠️ Chatbot Settings")
 
-# LangChain Configurations
-MODEL_NAME = "gemini-1.5-pro"
+# Model Selection
 EMBEDDING_MODEL = "models/embedding-001"
+model_options = ["gemini-1.5-pro", "gemini-1.5-flash"]
+selected_model = st.sidebar.selectbox("🔍 Select Model:", model_options, index=0)
+
+# Response Style (Mode Selection)
+#response_modes = {
+#    "🎭 Creative": {"temperature": 0.8, "max_output_tokens": 800},
+#    "📜 Simple": {"temperature": 0.2, "max_output_tokens": 500},
+#    "🧠 Intelligent": {"temperature": 0.5, "max_output_tokens": 1000},
+#}
+#selected_mode = st.sidebar.radio("🎨 Choose Response Style:", list(response_modes.keys()))
+
+# Custom Temperature & Token Limit Control
+#temperature = st.sidebar.slider("🔥 Temperature (Randomness)", 0.0, 1.0, response_modes[selected_mode]["temperature"])
+#max_tokens = st.sidebar.slider("📝 Max Tokens", 100, 2000, response_modes[selected_mode]["max_output_tokens"])
 
 st.title("📄 Multi-PDF Chatbot with Voice Commands")
 
@@ -59,7 +74,7 @@ if st.button("📥 Load PDFs"):
     # Setup conversational retrieval chain
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
     qa_chain = ConversationalRetrievalChain.from_llm(
-        llm=ChatGoogleGenerativeAI(model=MODEL_NAME, google_api_key=google_api_key),
+        llm=ChatGoogleGenerativeAI(model=selected_model, google_api_key=google_api_key),
         retriever=vectorstore.as_retriever(),
         memory=memory
     )
@@ -76,7 +91,7 @@ def get_voice_command():
     with sr.Microphone() as source:
         st.info("🎤 Speak now...")
         try:
-            audio = recognizer.listen(source,timeout=5)
+            audio = recognizer.listen(source,timeout=10)
             command = recognizer.recognize_google(audio)
             return command
         except sr.UnknownValueError:
@@ -92,12 +107,31 @@ if "qa_chain" in st.session_state:
         user_input = st.text_input("💬 Ask a question about the PDFs:")
 
     with col2:
-        if st.button("🎤 Use Voice (Press Spacebar)"):
+        if st.button("🎤 Use Voice"):
             voice_query = get_voice_command()
             if voice_query:
                 user_input = voice_query
                 st.text(f"You said: {voice_query}")
     
+    options = {
+        "📌 Summarize": "Summarize the content in a few sentences.",
+        "⚽ Sports News": "Give me the latest sports news.",
+        "🌍 International News": "Provide me with the latest international news.",
+        "🇮🇳 National News": "Show me the latest national news in India.",
+        "🏙️ City News": "What are the latest updates in my city?",
+        "💼 Jobs": "List some job openings in India.",
+        "🚔 Crime News": "Provide recent crime news updates.",
+    }
+    
+    selected_options = st.multiselect("📢 Choose topics to get updates:", list(options.keys()))
+
+    if st.button("Get answer!") and selected_options:
+        for option in selected_options:
+            query = options[option]
+            response = st.session_state.qa_chain.run(query)
+            st.session_state.chat_history.append((option, response))
+            #st.write(f"**{option}:**", response)
+
     if user_input:
         response = st.session_state.qa_chain.run(user_input)
         st.session_state.chat_history.append((user_input, response))
