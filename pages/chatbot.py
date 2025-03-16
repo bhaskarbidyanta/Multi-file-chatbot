@@ -9,6 +9,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGener
 from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
 from dotenv import load_dotenv
+from textblob import TextBlob
 
 # Load API key
 load_dotenv()
@@ -140,6 +141,27 @@ if "qa_chain" in st.session_state:
     for question, answer in st.session_state.chat_history:
         st.write(f"**You:** {question}")
         st.write(f"**Bot:** {answer}")
+
+    # Button for sentiment analysis
+    if st.button("📊 Analyze Sentiment"):
+        if st.session_state.chat_history:
+            #sentiments = []
+            #for _, answer in st.session_state.chat_history:
+            #    sentiment_score = TextBlob(answer).sentiment.polarity
+            #    sentiments.append(sentiment_score)
+            latest_response = st.session_state.chat_history[-1][1]
+            sentiment_score = TextBlob(latest_response).sentiment.polarity
+            
+            if sentiment_score > 0.1:
+                sentiment_label = "😊 Positive"
+            elif sentiment_score < -0.1:
+                sentiment_label = "😟 Negative"
+            else:
+                sentiment_label = "😐 Neutral"
+            
+            st.subheader(f"🧠 Sentiment of Latest Response: {sentiment_label} ({sentiment_score:.2f})")
+        else:
+            st.warning("⚠️ No news updates found! Try fetching news first.")
 
 if st.button("Logout"):
     st.session_state.clear()
