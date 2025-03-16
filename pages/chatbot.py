@@ -10,6 +10,7 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
 from dotenv import load_dotenv
 from textblob import TextBlob
+import emoji
 
 # Load API key
 load_dotenv()
@@ -122,6 +123,7 @@ if "qa_chain" in st.session_state:
         "🏙️ City News": "What are the latest updates in my city?",
         "💼 Jobs": "List some job openings in India.",
         "🚔 Crime News": "Provide recent crime news updates.",
+        "🏞️ Weather News":"Today's weather updates in the newspaper.",
     }
     
     selected_options = st.multiselect("📢 Choose topics to get updates:", list(options.keys()))
