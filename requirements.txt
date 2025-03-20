@@ -1,0 +1,13 @@
+streamlit
+pymongo
+python-dotenv
+PyPDF2
+langchain_community
+langchain-google-genai
+textblob
+emoji
+speechrecognition
+faiss-cpu
+PyAudio
+datetime
+langchain
