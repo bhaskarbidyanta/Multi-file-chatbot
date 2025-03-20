@@ -8,6 +8,6 @@ textblob
 emoji
 speechrecognition
 faiss-cpu
-PyAudio
+#PyAudio
 datetime
 langchain
